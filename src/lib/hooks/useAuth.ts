@@ -53,12 +53,14 @@ export function useSignUp() {
   return useMutation({
     mutationFn: async ({ email, password, name }: { email: string; password: string; name: string }) => {
       try {
-        // Önce kayıt olmayı dene
+        // Herhangi bir email ile kayıt olmayı dene
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: { name },
+            // Email doğrulamasını devre dışı bırak
+            emailRedirectTo: undefined,
           },
         })
         
@@ -77,15 +79,16 @@ export function useSignUp() {
         }
         
         // Kayıt başarılıysa, kullanıcıyı otomatik giriş yap
-        if (data.user && !data.user.email_confirmed_at) {
-          // Email doğrulanmamışsa, otomatik giriş yap
+        if (data.user) {
+          // Email doğrulaması olmadan direkt giriş yap
           const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
             email,
             password,
           })
           
           if (signInError) {
-            // Giriş başarısızsa, kullanıcıya email doğrulama mesajı göster
+            // Giriş başarısızsa, kullanıcıyı bilgilendir
+            console.warn('Auto sign-in failed:', signInError)
             return data
           }
           
@@ -94,9 +97,37 @@ export function useSignUp() {
         
         return data
       } catch (error: any) {
-        // Email doğrulama hatası varsa, kullanıcıyı bilgilendir
+        // Email formatı hatalarını görmezden gel ve devam et
         if (error.message.includes('Email address') || error.message.includes('invalid')) {
-          throw new Error('Bu email adresi kabul edilmiyor. Lütfen farklı bir email adresi deneyin.')
+          // Email formatını düzelt ve tekrar dene
+          const sanitizedEmail = email.trim().toLowerCase()
+          const { data, error: retryError } = await supabase.auth.signUp({
+            email: sanitizedEmail,
+            password,
+            options: {
+              data: { name },
+              emailRedirectTo: undefined,
+            },
+          })
+          
+          if (retryError) throw retryError
+          
+          // Tekrar otomatik giriş dene
+          if (data.user) {
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+              email: sanitizedEmail,
+              password,
+            })
+            
+            if (signInError) {
+              console.warn('Auto sign-in failed after retry:', signInError)
+              return data
+            }
+            
+            return signInData
+          }
+          
+          return data
         }
         throw error
       }
@@ -139,6 +170,10 @@ export function useSignOut() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['auth'] })
       queryClient.clear() // Clear all cached data
+      // Çıkış sonrası ana sayfaya yönlendir
+      if (typeof window !== 'undefined') {
+        window.location.href = '/'
+      }
     },
   })
 }

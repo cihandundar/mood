@@ -1,6 +1,6 @@
 'use client'
 
-import { useAuth } from '@/lib/hooks/useAuth'
+import { useAuth, useSignOut } from '@/lib/hooks/useAuth'
 import { useAddMood, useTodayMoods, MOOD_TYPES } from '@/lib/hooks/useMood'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,6 +13,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 export default function Home() {
   const { user, loading } = useAuth()
   const addMood = useAddMood()
+  const signOut = useSignOut()
   const { data: todayMoods } = useTodayMoods(user?.id || '')
   const [selectedMood, setSelectedMood] = useState<string | null>(null)
   const [intensity, setIntensity] = useState(5)
@@ -254,9 +255,13 @@ export default function Home() {
           <Link href="/dashboard">
             <Button variant="outline">Dashboard</Button>
           </Link>
-          <Link href="/auth/signout">
-            <Button variant="ghost">Çıkış Yap</Button>
-          </Link>
+          <Button 
+            variant="ghost" 
+            onClick={() => signOut.mutate()}
+            disabled={signOut.isPending}
+          >
+            {signOut.isPending ? 'Çıkış yapılıyor...' : 'Çıkış Yap'}
+          </Button>
         </div>
       </div>
     </div>

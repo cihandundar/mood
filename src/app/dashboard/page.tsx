@@ -1,6 +1,6 @@
 'use client'
 
-import { useAuth } from '@/lib/hooks/useAuth'
+import { useAuth, useSignOut } from '@/lib/hooks/useAuth'
 import { useDailySummary, useMoodHistory, MOOD_TYPES } from '@/lib/hooks/useMood'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,6 +11,7 @@ import Link from 'next/link'
 
 export default function Dashboard() {
   const { user } = useAuth()
+  const signOut = useSignOut()
   const today = new Date().toISOString().split('T')[0]
   const { data: dailySummary } = useDailySummary(user?.id || '', today)
   const { data: moodHistory } = useMoodHistory(user?.id || '', 7)
@@ -56,9 +57,18 @@ export default function Dashboard() {
               Ruh halinizin analizi
             </p>
           </div>
-          <Link href="/">
-            <Button variant="outline">Ana Sayfa</Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link href="/">
+              <Button variant="outline">Ana Sayfa</Button>
+            </Link>
+            <Button 
+              variant="ghost" 
+              onClick={() => signOut.mutate()}
+              disabled={signOut.isPending}
+            >
+              {signOut.isPending ? 'Çıkış yapılıyor...' : 'Çıkış Yap'}
+            </Button>
+          </div>
         </div>
 
         {/* Today's Summary */}

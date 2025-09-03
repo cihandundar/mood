@@ -19,9 +19,8 @@ export default function SignUp() {
   const router = useRouter()
 
   const validateEmail = (email: string) => {
-    // Daha esnek email validasyonu
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
-    return emailRegex.test(email)
+    // Çok esnek email validasyonu - herhangi bir format kabul et
+    return email.trim().length > 0 && email.includes('@')
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -50,21 +49,20 @@ export default function SignUp() {
     
     try {
       await signUp.mutateAsync({ email, password, name })
-      router.push('/auth/signin?message=check-email')
-         } catch (error: any) {
-       console.error('Sign up error:', error)
-       
-       // Supabase hata mesajlarını Türkçe'ye çevir
-       if (error?.message?.includes('Email address') || error?.message?.includes('invalid')) {
-         setErrorMessage('Bu email adresi kabul edilmiyor. Lütfen farklı bir email adresi deneyin.')
-       } else if (error?.message?.includes('password')) {
-         setErrorMessage('Şifre çok zayıf. Daha güçlü bir şifre seçin.')
-       } else if (error?.message?.includes('already registered')) {
-         setErrorMessage('Bu email adresi zaten kayıtlı. Giriş yapmayı deneyin.')
-       } else {
-         setErrorMessage(`Kayıt başarısız: ${error?.message || 'Bilinmeyen hata'}`)
-       }
-     }
+      // Başarılı kayıt sonrası dashboard'a yönlendir
+      router.push('/dashboard')
+    } catch (error: any) {
+      console.error('Sign up error:', error)
+      
+      // Supabase hata mesajlarını Türkçe'ye çevir
+      if (error?.message?.includes('password')) {
+        setErrorMessage('Şifre çok zayıf. Daha güçlü bir şifre seçin.')
+      } else if (error?.message?.includes('already registered')) {
+        setErrorMessage('Bu email adresi zaten kayıtlı. Giriş yapmayı deneyin.')
+      } else {
+        setErrorMessage(`Kayıt başarısız: ${error?.message || 'Bilinmeyen hata'}`)
+      }
+    }
   }
 
   return (
@@ -96,18 +94,13 @@ export default function SignUp() {
                  <Label htmlFor="email" className="text-white">Email</Label>
                  <Input
                    id="email"
-                   type="email"
-                   placeholder="ornek@email.com"
+                   type="text"
+                   placeholder="test@email.com"
                    value={email}
                    onChange={(e) => setEmail(e.target.value)}
                    required
-                   className={`bg-white/20 border-white/30 text-white placeholder:text-slate-300 focus:bg-white/30 ${
-                     email && !validateEmail(email) ? 'border-red-500' : ''
-                   }`}
+                   className="bg-white/20 border-white/30 text-white placeholder:text-slate-300 focus:bg-white/30"
                  />
-                 {email && !validateEmail(email) && (
-                   <p className="text-red-400 text-xs">Geçerli bir email adresi girin</p>
-                 )}
                </div>
                
                <div className="space-y-2">
