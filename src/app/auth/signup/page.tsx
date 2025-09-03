@@ -66,77 +66,78 @@ export default function SignUp() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-green-100 p-8">
       <div className="max-w-md mx-auto mt-20">
-        <Card className="bg-white/10 backdrop-blur-md border-white/20 shadow-2xl">
-                      <CardHeader className="text-center">
-              <CardTitle className="text-2xl text-white">Kayıt Ol</CardTitle>
-              <CardDescription className="text-slate-200">
-                Yeni hesap oluşturun
-              </CardDescription>
-            </CardHeader>
+        <Card className="bg-white/90 backdrop-blur-md border-green-200 shadow-xl">
+          <CardHeader className="text-center">
+            <div className="text-4xl mb-2">✨</div>
+            <CardTitle className="text-2xl text-gray-900">Kayıt Ol</CardTitle>
+            <CardDescription className="text-gray-600">
+              Yeni hesap oluşturun
+            </CardDescription>
+          </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-                             <div className="space-y-2">
-                 <Label htmlFor="name" className="text-white">Ad Soyad</Label>
-                 <Input
-                   id="name"
-                   type="text"
-                   placeholder="Adınız Soyadınız"
-                   value={name}
-                   onChange={(e) => setName(e.target.value)}
-                   required
-                   className="bg-white/20 border-white/30 text-white placeholder:text-slate-300 focus:bg-white/30"
-                 />
-               </div>
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-gray-700">Ad Soyad</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Adınız Soyadınız"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  className="bg-white border-green-200 text-gray-900 placeholder:text-gray-500 focus:border-green-400 focus:ring-green-400"
+                />
+              </div>
 
-                             <div className="space-y-2">
-                 <Label htmlFor="email" className="text-white">Email</Label>
-                 <Input
-                   id="email"
-                   type="text"
-                   placeholder="test@email.com"
-                   value={email}
-                   onChange={(e) => setEmail(e.target.value)}
-                   required
-                   className="bg-white/20 border-white/30 text-white placeholder:text-slate-300 focus:bg-white/30"
-                 />
-               </div>
-               
-               <div className="space-y-2">
-                 <Label htmlFor="password" className="text-white">Şifre</Label>
-                 <Input
-                   id="password"
-                   type="password"
-                   placeholder="••••••••"
-                   value={password}
-                   onChange={(e) => setPassword(e.target.value)}
-                   required
-                   minLength={6}
-                   className="bg-white/20 border-white/30 text-white placeholder:text-slate-300 focus:bg-white/30"
-                 />
-               </div>
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-gray-700">Email</Label>
+                <Input
+                  id="email"
+                  type="text"
+                  placeholder="test@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="bg-white border-green-200 text-gray-900 placeholder:text-gray-500 focus:border-green-400 focus:ring-green-400"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-gray-700">Şifre</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  className="bg-white border-green-200 text-gray-900 placeholder:text-gray-500 focus:border-green-400 focus:ring-green-400"
+                />
+              </div>
 
-               <div className="space-y-2">
-                 <Label htmlFor="confirmPassword" className="text-white">Şifre Tekrar</Label>
-                 <Input
-                   id="confirmPassword"
-                   type="password"
-                   placeholder="••••••••"
-                   value={confirmPassword}
-                   onChange={(e) => setConfirmPassword(e.target.value)}
-                   required
-                   className="bg-white/20 border-white/30 text-white placeholder:text-slate-300 focus:bg-white/30"
-                 />
-               </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword" className="text-gray-700">Şifre Tekrar</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  className="bg-white border-green-200 text-gray-900 placeholder:text-gray-500 focus:border-green-400 focus:ring-green-400"
+                />
+              </div>
 
-                             <Button 
-                 type="submit" 
-                 className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3"
-                 disabled={signUp.isPending}
-               >
-                 {signUp.isPending ? 'Kayıt oluşturuluyor...' : 'Kayıt Ol'}
-               </Button>
+              <Button 
+                type="submit" 
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3"
+                disabled={signUp.isPending}
+              >
+                {signUp.isPending ? 'Kayıt oluşturuluyor...' : '✨ Kayıt Ol'}
+              </Button>
 
               {(signUp.isError || errorMessage) && (
                 <p className="text-red-500 text-sm text-center">
@@ -145,14 +146,14 @@ export default function SignUp() {
               )}
             </form>
 
-                         <div className="mt-6 text-center">
-               <p className="text-sm text-slate-300">
-                 Zaten hesabınız var mı?{' '}
-                 <Link href="/auth/signin" className="text-purple-400 hover:text-purple-300 hover:underline">
-                   Giriş yapın
-                 </Link>
-               </p>
-             </div>
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600">
+                Zaten hesabınız var mı?{' '}
+                <Link href="/auth/signin" className="text-green-600 hover:text-green-500 hover:underline">
+                  🚀 Giriş yapın
+                </Link>
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>

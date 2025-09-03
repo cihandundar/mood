@@ -1,7 +1,7 @@
 'use client'
 
 import { useAuth, useSignOut } from '@/lib/hooks/useAuth'
-import { useDailySummary, useMoodHistory, MOOD_TYPES } from '@/lib/hooks/useMood'
+import { useDailySummary, useMoodHistory, useMoodSummaryByDate, getTodayDate, getYesterdayDate, formatDateForDisplay, MOOD_TYPES } from '@/lib/hooks/useMood'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -12,10 +12,26 @@ import Link from 'next/link'
 export default function Dashboard() {
   const { user } = useAuth()
   const signOut = useSignOut()
-  const today = new Date().toISOString().split('T')[0]
+  const today = getTodayDate()
   const { data: dailySummary } = useDailySummary(user?.id || '', today)
   const { data: moodHistory } = useMoodHistory(user?.id || '', 7)
   const [selectedDate, setSelectedDate] = useState(today)
+  const [selectedDayForDetail, setSelectedDayForDetail] = useState<string | null>(null)
+
+  // Son 7 günün özetini al
+  const getLast7Days = () => {
+    const days = []
+    for (let i = 1; i <= 7; i++) {
+      const date = new Date()
+      date.setDate(date.getDate() - i)
+      days.push(date.toISOString().split('T')[0])
+    }
+    return days
+  }
+
+  const last7Days = getLast7Days()
+  const yesterdayDate = getYesterdayDate()
+  const { data: yesterdaySummary } = useMoodSummaryByDate(user?.id || '', yesterdayDate)
 
   if (!user) {
     return (
@@ -157,6 +173,37 @@ export default function Dashboard() {
           </Card>
         )}
 
+        {/* Geçmiş Günler Özeti */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Geçmiş Günler</CardTitle>
+            <CardDescription>
+              Son 7 günün ruh hali özetleri
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {last7Days.map((date) => (
+                <PastDayCard 
+                  key={date} 
+                  date={date} 
+                  userId={user?.id || ''} 
+                  onSelect={() => setSelectedDayForDetail(date)}
+                />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Gün Detay Modal */}
+        {selectedDayForDetail && (
+          <DayDetailModal 
+            date={selectedDayForDetail}
+            userId={user?.id || ''}
+            onClose={() => setSelectedDayForDetail(null)}
+          />
+        )}
+
         {/* Recent History */}
         {moodHistory && moodHistory.length > 0 && (
           <Card>
@@ -192,6 +239,165 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         )}
+      </div>
+    </div>
+  )
+}
+
+// Past Day Card Component
+function PastDayCard({ date, userId, onSelect }: { date: string; userId: string; onSelect: () => void }) {
+  const { data: summary } = useMoodSummaryByDate(userId, date)
+  
+  if (!summary) {
+    return (
+      <Card className="p-4 border-dashed border-gray-300 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors" onClick={onSelect}>
+        <div className="text-center">
+          <div className="text-2xl mb-2">📅</div>
+          <h3 className="font-medium text-gray-700">{formatDateForDisplay(date)}</h3>
+          <p className="text-sm text-gray-500">Kayıt yok</p>
+        </div>
+      </Card>
+    )
+  }
+
+  return (
+    <Card className="p-4 cursor-pointer hover:shadow-md transition-all hover:scale-105" onClick={onSelect}>
+      <div className="text-center">
+        <div className="text-3xl mb-2">
+          {MOOD_TYPES[summary.mostFrequentMood as keyof typeof MOOD_TYPES]?.emoji || '😐'}
+        </div>
+        <h3 className="font-semibold text-gray-900">{formatDateForDisplay(date)}</h3>
+        <p className="text-sm text-gray-600 mb-2">
+          {summary.totalMoods} kayıt
+        </p>
+        <div className="flex flex-wrap gap-1 justify-center">
+          {Object.entries(summary.moodCounts).slice(0, 3).map(([moodType, count]) => (
+            <Badge key={moodType} variant="secondary" className="text-xs">
+              {MOOD_TYPES[moodType as keyof typeof MOOD_TYPES]?.emoji} {count}
+            </Badge>
+          ))}
+        </div>
+        <p className="text-xs text-gray-500 mt-2">
+          En çok: {MOOD_TYPES[summary.mostFrequentMood as keyof typeof MOOD_TYPES]?.label}
+        </p>
+      </div>
+    </Card>
+  )
+}
+
+// Day Detail Modal Component
+function DayDetailModal({ date, userId, onClose }: { date: string; userId: string; onClose: () => void }) {
+  const { data: summary } = useMoodSummaryByDate(userId, date)
+  
+  if (!summary) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+          <div className="text-center">
+            <div className="text-4xl mb-4">📅</div>
+            <h2 className="text-xl font-bold mb-2">{formatDateForDisplay(date)}</h2>
+            <p className="text-gray-600 mb-4">Bu güne ait kayıt bulunamadı</p>
+            <Button onClick={onClose}>Kapat</Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold">{formatDateForDisplay(date)} - Detaylar</h2>
+          <Button variant="ghost" onClick={onClose}>✕</Button>
+        </div>
+        
+        <div className="space-y-6">
+          {/* Özet Bilgiler */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center p-4 bg-blue-50 rounded-lg">
+              <div className="text-2xl font-bold text-blue-600">{summary.totalMoods}</div>
+              <div className="text-sm text-blue-600">Toplam Kayıt</div>
+            </div>
+            <div className="text-center p-4 bg-green-50 rounded-lg">
+              <div className="text-2xl font-bold text-green-600">{summary.mostFrequentCount}</div>
+              <div className="text-sm text-green-600">En Çok Seçilen</div>
+            </div>
+            <div className="text-center p-4 bg-purple-50 rounded-lg">
+              <div className="text-2xl font-bold text-purple-600">{Object.keys(summary.moodCounts).length}</div>
+              <div className="text-sm text-purple-600">Farklı Mood</div>
+            </div>
+          </div>
+
+          {/* En Çok Seçilen Mood */}
+          <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg">
+            <h3 className="font-semibold mb-2">En Çok Seçilen Ruh Hali</h3>
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">
+                {MOOD_TYPES[summary.mostFrequentMood as keyof typeof MOOD_TYPES]?.emoji}
+              </span>
+              <div>
+                <div className="font-medium">
+                  {MOOD_TYPES[summary.mostFrequentMood as keyof typeof MOOD_TYPES]?.label}
+                </div>
+                <div className="text-sm text-gray-600">
+                  {summary.mostFrequentCount} kez seçildi
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Mood Dağılımı */}
+          <div>
+            <h3 className="font-semibold mb-3">Mood Dağılımı</h3>
+            <div className="space-y-3">
+              {Object.entries(summary.moodCounts).map(([moodType, count]) => {
+                const percentage = (count / summary.totalMoods) * 100
+                const moodInfo = MOOD_TYPES[moodType as keyof typeof MOOD_TYPES]
+                
+                return (
+                  <div key={moodType} className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 w-24">
+                      <span className="text-xl">{moodInfo?.emoji}</span>
+                      <span className="text-sm font-medium">{moodInfo?.label}</span>
+                    </div>
+                    <div className="flex-1">
+                      <Progress value={percentage} className="h-2" />
+                    </div>
+                    <div className="w-16 text-right">
+                      <span className="text-sm font-medium">{count} ({percentage.toFixed(1)}%)</span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Saatlik Dağılım */}
+          <div>
+            <h3 className="font-semibold mb-3">Saatlik Dağılım</h3>
+            <div className="space-y-2">
+              {summary.moods.map((mood, index) => (
+                <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">
+                      {MOOD_TYPES[mood.mood_type as keyof typeof MOOD_TYPES]?.emoji}
+                    </span>
+                    <span className="text-sm">
+                      {MOOD_TYPES[mood.mood_type as keyof typeof MOOD_TYPES]?.label}
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    {new Date(mood.created_at).toLocaleTimeString('tr-TR', { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )

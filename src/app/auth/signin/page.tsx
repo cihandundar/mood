@@ -27,50 +27,51 @@ export default function SignIn() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-green-100 p-8">
       <div className="max-w-md mx-auto mt-20">
-        <Card className="bg-white/10 backdrop-blur-md border-white/20 shadow-2xl">
-                      <CardHeader className="text-center">
-              <CardTitle className="text-2xl text-white">Giriş Yap</CardTitle>
-              <CardDescription className="text-slate-200">
-                Hesabınıza giriş yapın
-              </CardDescription>
-            </CardHeader>
+        <Card className="bg-white/90 backdrop-blur-md border-green-200 shadow-xl">
+          <CardHeader className="text-center">
+            <div className="text-4xl mb-2">🌟</div>
+            <CardTitle className="text-2xl text-gray-900">Giriş Yap</CardTitle>
+            <CardDescription className="text-gray-600">
+              Hesabınıza giriş yapın
+            </CardDescription>
+          </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-                             <div className="space-y-2">
-                 <Label htmlFor="email" className="text-white">Email</Label>
-                 <Input
-                   id="email"
-                   type="email"
-                   placeholder="ornek@email.com"
-                   value={email}
-                   onChange={(e) => setEmail(e.target.value)}
-                   required
-                   className="bg-white/20 border-white/30 text-white placeholder:text-slate-300 focus:bg-white/30"
-                 />
-               </div>
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-gray-700">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="ornek@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="bg-white border-green-200 text-gray-900 placeholder:text-gray-500 focus:border-green-400 focus:ring-green-400"
+                />
+              </div>
               
-                             <div className="space-y-2">
-                 <Label htmlFor="password" className="text-white">Şifre</Label>
-                 <Input
-                   id="password"
-                   type="password"
-                   placeholder="••••••••"
-                   value={password}
-                   onChange={(e) => setPassword(e.target.value)}
-                   required
-                   className="bg-white/20 border-white/30 text-white placeholder:text-slate-300 focus:bg-white/30"
-                 />
-               </div>
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-gray-700">Şifre</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="bg-white border-green-200 text-gray-900 placeholder:text-gray-500 focus:border-green-400 focus:ring-green-400"
+                />
+              </div>
 
-                             <Button 
-                 type="submit" 
-                 className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3"
-                 disabled={signIn.isPending}
-               >
-                 {signIn.isPending ? 'Giriş yapılıyor...' : 'Giriş Yap'}
-               </Button>
+              <Button 
+                type="submit" 
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3"
+                disabled={signIn.isPending}
+              >
+                {signIn.isPending ? 'Giriş yapılıyor...' : '🚀 Giriş Yap'}
+              </Button>
 
               {signIn.isError && (
                 <p className="text-red-500 text-sm text-center">
@@ -79,14 +80,14 @@ export default function SignIn() {
               )}
             </form>
 
-                         <div className="mt-6 text-center">
-               <p className="text-sm text-slate-300">
-                 Hesabınız yok mu?{' '}
-                 <Link href="/auth/signup" className="text-purple-400 hover:text-purple-300 hover:underline">
-                   Kayıt olun
-                 </Link>
-               </p>
-             </div>
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600">
+                Hesabınız yok mu?{' '}
+                <Link href="/auth/signup" className="text-green-600 hover:text-green-500 hover:underline">
+                  ✨ Kayıt olun
+                </Link>
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>
