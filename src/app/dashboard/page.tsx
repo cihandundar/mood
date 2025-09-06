@@ -1,20 +1,22 @@
 'use client'
 
 import { useAuth, useSignOut } from '@/lib/hooks/useAuth'
-import { useDailySummary, useMoodHistory, useMoodSummaryByDate, getTodayDate, getYesterdayDate, formatDateForDisplay, MOOD_TYPES } from '@/lib/hooks/useMood'
+import { useDailySummary, useMoodHistory, useMoodSummaryByDate, getTodayDate, getYesterdayDate, formatDateForDisplay, MOOD_TYPES, useSaveCheckIn } from '@/lib/hooks/useMood'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { MoodCharts } from '@/components/charts/mood-charts'
 import { useAddJournal, useJournalList, useJournalsByDate } from '@/lib/hooks/useJournal'
+import { CheckInModal, type CheckInData } from '@/components/checkin-modal'
 
 export default function Dashboard() {
   const { user } = useAuth()
   const signOut = useSignOut()
+  const saveCheckIn = useSaveCheckIn()
   const today = getTodayDate()
   const { data: dailySummary } = useDailySummary(user?.id || '', today)
   const { data: moodHistory } = useMoodHistory(user?.id || '', 7)
@@ -40,6 +42,60 @@ export default function Dashboard() {
   const [isJournalOpen, setIsJournalOpen] = useState(false)
   const [journalMood, setJournalMood] = useState<string>('neutral')
   const [journalText, setJournalText] = useState('')
+  const checkIns = useMemo(() => {
+    if (!moodHistory) return [] as Array<{ timestamp: string; stressLevel?: number; energyLevel?: number; sleepHours?: number }>
+    const items: Array<{ timestamp: string; stressLevel?: number; energyLevel?: number; sleepHours?: number }> = []
+    for (const m of moodHistory) {
+      const notes = typeof (m as any).notes === 'string' ? (m as any).notes as string : ''
+      if (!notes) continue
+      for (const line of notes.split('\n')) {
+        const trimmed = line.trim()
+        if (trimmed.startsWith('checkin:')) {
+          const jsonPart = trimmed.slice('checkin:'.length).trim()
+          try {
+            const data = JSON.parse(jsonPart) as { stressLevel?: number; energyLevel?: number; sleepHours?: number }
+            items.push({ timestamp: (m as any).created_at as string, ...data })
+          } catch (_) {
+            // ignore parse errors
+          }
+        }
+      }
+    }
+    items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    return items
+  }, [moodHistory])
+  const groupedDays = useMemo(() => {
+    if (!moodHistory) return [] as Array<{ date: string; count: number; items: { emoji: string; label: string; count: number }[] }>
+    const dateToCounts: Record<string, Record<string, number>> = {}
+    for (const m of moodHistory) {
+      const d = new Date((m as { created_at: string }).created_at).toISOString().split('T')[0]
+      const type = (m as { mood_type: string }).mood_type
+      if (!dateToCounts[d]) dateToCounts[d] = {}
+      dateToCounts[d][type] = (dateToCounts[d][type] || 0) + 1
+    }
+    const result = Object.entries(dateToCounts).map(([date, counts]) => {
+      const items = Object.entries(counts)
+        .map(([type, count]) => ({
+          emoji: MOOD_TYPES[type as keyof typeof MOOD_TYPES]?.emoji || '😐',
+          label: MOOD_TYPES[type as keyof typeof MOOD_TYPES]?.label || type,
+          count,
+        }))
+        .sort((a, b) => b.count - a.count)
+      const total = items.reduce((acc, it) => acc + it.count, 0)
+      return { date, count: total, items }
+    })
+    return result.sort((a, b) => (a.date < b.date ? 1 : -1))
+  }, [moodHistory])
+  const [isCheckInOpen, setIsCheckInOpen] = useState(false)
+  const [openDates, setOpenDates] = useState<Record<string, boolean>>({})
+  const handleCheckInSave = async (data: CheckInData) => {
+    if (!user?.id) return
+    try {
+      await saveCheckIn.mutateAsync({ userId: user.id, data })
+    } catch (e) {
+      console.error('Check-in save failed:', e)
+    }
+  }
 
   if (!user) {
     return (
@@ -85,6 +141,9 @@ export default function Dashboard() {
             <Link href="/">
               <Button variant="outline" className="w-full sm:w-auto">Ana Sayfa</Button>
             </Link>
+            <Button variant="outline" onClick={() => setIsCheckInOpen(true)} className="w-full sm:w-auto">
+              Kısa Check‑in
+            </Button>
             <Button variant="outline" onClick={() => setIsJournalOpen(true)} className="w-full sm:w-auto">
               Hatıra Günlüğü
             </Button>
@@ -98,6 +157,13 @@ export default function Dashboard() {
             </Button>
           </div>
         </div>
+        {isCheckInOpen && (
+          <CheckInModal
+            open={isCheckInOpen}
+            onClose={() => setIsCheckInOpen(false)}
+            onSave={handleCheckInSave}
+          />
+        )}
 
         {/* Today's Summary */}
         {dailySummary && (
@@ -252,35 +318,88 @@ export default function Dashboard() {
           </Card>
         )}
 
+        {/* Check-in Kayıtları */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Check‑in Kayıtları</CardTitle>
+            <CardDescription>Son 7 günden elde edilen kısa check‑in verileri</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {checkIns.length === 0 ? (
+              <p className="text-sm text-gray-500">Henüz check‑in kaydı bulunamadı.</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {checkIns.slice(0, 9).map((c, idx) => (
+                  <div key={idx} className="p-4 rounded-lg border bg-white/90">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-gray-600">
+                        {new Date(c.timestamp).toLocaleString('tr-TR')}
+                      </span>
+                      <Badge variant="secondary" className="text-xs">
+                        Uyku: {c.sleepHours ?? '-'}s
+                      </Badge>
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <div className="flex justify-between text-xs text-gray-600 mb-1">
+                          <span>Stres</span>
+                          <span>{c.stressLevel ?? '-'} / 10</span>
+                        </div>
+                        <Progress value={(c.stressLevel ?? 0) * 10} className="h-2" />
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-xs text-gray-600 mb-1">
+                          <span>Enerji</span>
+                          <span>{c.energyLevel ?? '-'} / 10</span>
+                        </div>
+                        <Progress value={(c.energyLevel ?? 0) * 10} className="h-2" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Recent History */}
-        {moodHistory && moodHistory.length > 0 && (
+        {groupedDays.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle>Son Kayıtlar</CardTitle>
-              <CardDescription>
-                Son 7 günün mood kayıtları
-              </CardDescription>
+              <CardDescription>Son 7 gün - gün bazlı özet</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {moodHistory.slice(0, 10).map((mood, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">
-                        {MOOD_TYPES[mood.mood_type as keyof typeof MOOD_TYPES]?.emoji}
-                      </span>
-                      <div>
-                        <p className="font-medium">
-                          {MOOD_TYPES[mood.mood_type as keyof typeof MOOD_TYPES]?.label}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          {new Date(mood.created_at).toLocaleString('tr-TR')}
-                        </p>
+              <div className="space-y-2">
+                {groupedDays.map((g) => (
+                  <div key={g.date} className="border rounded-lg overflow-hidden">
+                    <button
+                      className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 cursor-pointer"
+                      onClick={() => setOpenDates((s) => ({ ...s, [g.date]: !s[g.date] }))}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium">
+                          {new Date(g.date).toLocaleDateString('tr-TR')}
+                        </span>
+                        <Badge variant="secondary" className="text-xs">
+                          {g.count} kayıt
+                        </Badge>
+                      </div>
+                      <span className={`text-xl md:text-2xl transition-transform ${openDates[g.date] ? 'rotate-180' : ''}`}>▾</span>
+                    </button>
+                    <div className={`bg-white px-4 py-3 overflow-hidden transition-all duration-300 ${openDates[g.date] ? 'opacity-100 max-h-64' : 'opacity-0 max-h-0'}`}>
+                      <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
+                        {g.items.map((it) => (
+                          <div key={it.label} className="flex flex-col items-center">
+                            <div className="relative inline-block">
+                              <span className="text-3xl">{it.emoji}</span>
+                              <span className="absolute -top-1 -right-2 bg-green-600 text-white text-xs rounded-full min-w-5 h-5 px-1 flex items-center justify-center">{it.count}</span>
+                            </div>
+                            <span className="text-xs text-gray-600 mt-1 text-center">{it.label}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    <Badge variant="secondary">
-                      Yoğunluk: {mood.intensity}/10
-                    </Badge>
                   </div>
                 ))}
               </div>
@@ -441,6 +560,26 @@ function PastDaysGrid({ userId, onSelectDay }: { userId: string; onSelectDay: (d
 // Past Day Card Component
 function PastDayCard({ date, userId, onSelect, showOnlyWithData = false }: { date: string; userId: string; onSelect: () => void; showOnlyWithData?: boolean }) {
   const { data: summary } = useMoodSummaryByDate(userId, date)
+  const { data: journals } = useJournalsByDate(userId, date)
+  const checkIns = useMemo(() => {
+    if (!summary?.moods) return [] as Array<{ timestamp: string; stressLevel?: number; energyLevel?: number; sleepHours?: number }>
+    const items: Array<{ timestamp: string; stressLevel?: number; energyLevel?: number; sleepHours?: number }> = []
+    for (const m of summary.moods) {
+      const notes = typeof (m as any).notes === 'string' ? ((m as any).notes as string) : ''
+      if (!notes) continue
+      for (const line of notes.split('\n')) {
+        const trimmed = line.trim()
+        if (trimmed.startsWith('checkin:')) {
+          const jsonPart = trimmed.slice('checkin:'.length).trim()
+          try {
+            const data = JSON.parse(jsonPart) as { stressLevel?: number; energyLevel?: number; sleepHours?: number }
+            items.push({ timestamp: (m as any).created_at as string, ...data })
+          } catch (_) {}
+        }
+      }
+    }
+    return items
+  }, [summary])
   
   // Eğer showOnlyWithData true ise ve veri yoksa hiçbir şey gösterme
   if (!summary && showOnlyWithData) {
@@ -458,7 +597,7 @@ function PastDayCard({ date, userId, onSelect, showOnlyWithData = false }: { dat
       </Card>
     )
   }
-
+  
   return (
     <Card className="p-4 cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-110 border-2 border-gray-200 hover:border-green-300 bg-white/90 backdrop-blur-sm" onClick={onSelect}>
       <div className="text-center">
@@ -476,6 +615,10 @@ function PastDayCard({ date, userId, onSelect, showOnlyWithData = false }: { dat
             </Badge>
           ))}
         </div>
+        <div className="flex items-center justify-center gap-2 mt-1">
+          <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 border-blue-200">Günlük: {journals?.length || 0}</Badge>
+          <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800 border-purple-200">Check‑in: {checkIns.length}</Badge>
+        </div>
         <p className="text-xs text-gray-500 font-medium">
           En çok: {MOOD_TYPES[summary.mostFrequentMood as keyof typeof MOOD_TYPES]?.label}
         </p>
@@ -488,6 +631,26 @@ function PastDayCard({ date, userId, onSelect, showOnlyWithData = false }: { dat
 function DayDetailModal({ date, userId, onClose }: { date: string; userId: string; onClose: () => void }) {
   const { data: summary } = useMoodSummaryByDate(userId, date)
   const { data: journals } = useJournalsByDate(userId, date)
+  const checkIns = useMemo(() => {
+    if (!summary?.moods) return [] as Array<{ timestamp: string; stressLevel?: number; energyLevel?: number; sleepHours?: number }>
+    const items: Array<{ timestamp: string; stressLevel?: number; energyLevel?: number; sleepHours?: number }> = []
+    for (const m of summary.moods) {
+      const notes = typeof (m as any).notes === 'string' ? (m as any).notes as string : ''
+      if (!notes) continue
+      for (const line of notes.split('\n')) {
+        const trimmed = line.trim()
+        if (trimmed.startsWith('checkin:')) {
+          const jsonPart = trimmed.slice('checkin:'.length).trim()
+          try {
+            const data = JSON.parse(jsonPart) as { stressLevel?: number; energyLevel?: number; sleepHours?: number }
+            items.push({ timestamp: (m as any).created_at as string, ...data })
+          } catch (_) {}
+        }
+      }
+    }
+    items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    return items
+  }, [summary])
   
   if (!summary) {
     return (
@@ -619,6 +782,30 @@ function DayDetailModal({ date, userId, onClose }: { date: string; userId: strin
                     </div>
                   )
                 })}
+              </div>
+            )}
+          </div>
+          <div>
+            <h3 className="font-semibold mb-3">Check‑in'ler</h3>
+            {checkIns.length === 0 && (
+              <p className="text-sm text-gray-500">Bu güne ait check‑in bulunamadı.</p>
+            )}
+            {checkIns.length > 0 && (
+              <div className="space-y-2">
+                {checkIns.map((c, idx) => (
+                  <div key={idx} className="p-3 rounded-md border bg-white/80">
+                    <div className="flex items-center justify-between text-xs text-gray-600 mb-2">
+                      <span>{new Date(c.timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs"><span>Stres</span><span>{c.stressLevel ?? '-'} / 10</span></div>
+                      <Progress value={(c.stressLevel ?? 0) * 10} className="h-2" />
+                      <div className="flex justify-between text-xs"><span>Enerji</span><span>{c.energyLevel ?? '-'} / 10</span></div>
+                      <Progress value={(c.energyLevel ?? 0) * 10} className="h-2" />
+                      <div className="text-xs text-gray-600">Uyku: {c.sleepHours ?? '-'} saat</div>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>

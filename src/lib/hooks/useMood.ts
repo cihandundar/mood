@@ -49,6 +49,46 @@ export function useAddMood() {
   })
 }
 
+// Save check-in data by appending JSON into notes field of last mood entry
+export function useSaveCheckIn() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (args: { userId: string; data: Record<string, unknown> }) => {
+      const { userId, data } = args
+      const { data: latest, error: fetchError } = await supabase
+        .from('mood_entries')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (fetchError) throw fetchError
+      if (!latest) return null
+
+      const existingNotes = typeof latest.notes === 'string' ? latest.notes : ''
+      const appended = existingNotes
+        ? `${existingNotes}\ncheckin: ${JSON.stringify(data)}`
+        : `checkin: ${JSON.stringify(data)}`
+
+      const { data: updated, error: updateError } = await supabase
+        .from('mood_entries')
+        .update({ notes: appended })
+        .eq('id', latest.id)
+        .select()
+        .single()
+
+      if (updateError) throw updateError
+      return updated
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['moods'] })
+      queryClient.invalidateQueries({ queryKey: ['mood-history'] })
+    },
+  })
+}
+
 // Get today's mood entries
 export function useTodayMoods(userId: string) {
   const today = new Date().toISOString().split('T')[0]
