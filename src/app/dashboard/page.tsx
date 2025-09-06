@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { MoodCharts } from '@/components/charts/mood-charts'
+import { useAddJournal, useJournalList, useJournalsByDate } from '@/lib/hooks/useJournal'
 
 export default function Dashboard() {
   const { user } = useAuth()
@@ -34,6 +35,11 @@ export default function Dashboard() {
   const last7Days = getLast7Days()
   const yesterdayDate = getYesterdayDate()
   const { data: yesterdaySummary } = useMoodSummaryByDate(user?.id || '', yesterdayDate)
+  const addJournal = useAddJournal()
+  const { data: journals } = useJournalList(user?.id || '', 6)
+  const [isJournalOpen, setIsJournalOpen] = useState(false)
+  const [journalMood, setJournalMood] = useState<string>('neutral')
+  const [journalText, setJournalText] = useState('')
 
   if (!user) {
     return (
@@ -66,8 +72,8 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-8">
+          <div className="space-y-1">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
               Dashboard
             </h1>
@@ -75,16 +81,20 @@ export default function Dashboard() {
               Ruh halinizin analizi
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 sm:justify-end">
             <Link href="/">
-              <Button variant="outline">Ana Sayfa</Button>
+              <Button variant="outline" className="w-full sm:w-auto">Ana Sayfa</Button>
             </Link>
+            <Button variant="outline" onClick={() => setIsJournalOpen(true)} className="w-full sm:w-auto">
+              Hatıra Günlüğü
+            </Button>
             <Button 
-              variant="ghost" 
+              variant="outline" 
               onClick={() => signOut.mutate()}
               disabled={signOut.isPending}
+              className="w-full sm:w-auto border-red-200 text-red-700 hover:bg-red-50 hover:border-red-300"
             >
-              {signOut.isPending ? 'Çıkış yapılıyor...' : 'Çıkış Yap'}
+              {signOut.isPending ? 'Çıkış yapılıyor...' : '🚪 Çıkış Yap'}
             </Button>
           </div>
         </div>
@@ -200,6 +210,48 @@ export default function Dashboard() {
         {/* Charts */}
         <MoodCharts userId={user?.id || ''} />
 
+        {/* Günlük (Journal) Son Kayıtlar */}
+        {journals && journals.length > 0 && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>Günlük Notlar</CardTitle>
+              <CardDescription>Son notlarınız</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {journals.map((j) => {
+                  const mood = MOOD_TYPES[j.mood_type as keyof typeof MOOD_TYPES]
+                  const bg = j.mood_type === 'happy' || j.mood_type === 'excited'
+                    ? 'bg-yellow-50'
+                    : j.mood_type === 'calm'
+                    ? 'bg-blue-50'
+                    : j.mood_type === 'sad'
+                    ? 'bg-gray-50'
+                    : j.mood_type === 'angry'
+                    ? 'bg-red-50'
+                    : j.mood_type === 'stressed'
+                    ? 'bg-purple-50'
+                    : j.mood_type === 'tired'
+                    ? 'bg-indigo-50'
+                    : 'bg-slate-50'
+                  return (
+                    <div key={j.id} className={`p-4 rounded-lg border ${bg}`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xl">{mood?.emoji}</span>
+                        <span className="font-medium">{mood?.label}</span>
+                        <span className="text-xs text-gray-500 ml-auto">
+                          {new Date(j.created_at).toLocaleString('tr-TR')}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap">{j.content}</p>
+                    </div>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Recent History */}
         {moodHistory && moodHistory.length > 0 && (
           <Card>
@@ -236,6 +288,63 @@ export default function Dashboard() {
           </Card>
         )}
       </div>
+
+      {/* Journal Modal */}
+      {isJournalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Hatıra Günlüğü</h3>
+              <Button variant="ghost" onClick={() => setIsJournalOpen(false)}>✕</Button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium">Ruh Hali</label>
+                <div className="mt-2 grid grid-cols-4 gap-2">
+                  {Object.entries(MOOD_TYPES).map(([key, mood]) => (
+                    <button
+                      key={key}
+                      className={`border rounded p-2 text-center hover:bg-gray-50 ${journalMood === key ? 'ring-2 ring-emerald-500' : ''}`}
+                      onClick={() => setJournalMood(key)}
+                    >
+                      <div className="text-xl">{mood.emoji}</div>
+                      <div className="text-xs mt-1">{mood.label}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Bugün neler hissediyorsun?</label>
+                <textarea
+                  className="mt-2 w-full min-h-32 rounded-md border p-3 text-sm"
+                  placeholder="Duygularını not al..."
+                  value={journalText}
+                  onChange={(e) => setJournalText(e.target.value)}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setIsJournalOpen(false)}>Vazgeç</Button>
+                <Button
+                  onClick={async () => {
+                    if (!user?.id || !journalText.trim()) return
+                    try {
+                      await addJournal.mutateAsync({ user_id: user.id, mood_type: journalMood, content: journalText.trim() })
+                      setJournalText('')
+                      setJournalMood('neutral')
+                      setIsJournalOpen(false)
+                    } catch (e) {
+                      console.error(e)
+                    }
+                  }}
+                  disabled={addJournal.isPending}
+                >
+                  {addJournal.isPending ? 'Kaydediliyor...' : 'Kaydet'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -266,9 +375,23 @@ function PastDaysGrid({ userId, onSelectDay }: { userId: string; onSelectDay: (d
             .lte('created_at', `${dateString}T23:59:59`)
             .limit(1)
           
-          if (!error && data && data.length > 0) {
-            days.push(dateString)
+          let hasData = !error && data && data.length > 0
+
+          // Eğer mood verisi yoksa, journal var mı bak
+          if (!hasData) {
+            const { data: j, error: jErr } = await supabase
+              .from('journal_entries')
+              .select('id')
+              .eq('user_id', userId)
+              .gte('created_at', `${dateString}T00:00:00`)
+              .lte('created_at', `${dateString}T23:59:59`)
+              .limit(1)
+            if (!jErr && j && j.length > 0) {
+              hasData = true
+            }
           }
+
+          if (hasData) days.push(dateString)
         } catch (error) {
           console.error('Error checking day:', dateString, error)
         }
@@ -364,6 +487,7 @@ function PastDayCard({ date, userId, onSelect, showOnlyWithData = false }: { dat
 // Day Detail Modal Component
 function DayDetailModal({ date, userId, onClose }: { date: string; userId: string; onClose: () => void }) {
   const { data: summary } = useMoodSummaryByDate(userId, date)
+  const { data: journals } = useJournalsByDate(userId, date)
   
   if (!summary) {
     return (
@@ -472,6 +596,31 @@ function DayDetailModal({ date, userId, onClose }: { date: string; userId: strin
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Günlük Notlar */}
+          <div>
+            <h3 className="font-semibold mb-3">Günlük Notlar</h3>
+            {(!journals || journals.length === 0) && (
+              <p className="text-sm text-gray-500">Bu güne ait günlük bulunamadı.</p>
+            )}
+            {journals && journals.length > 0 && (
+              <div className="space-y-3">
+                {journals.map((j) => {
+                  const mood = MOOD_TYPES[j.mood_type as keyof typeof MOOD_TYPES]
+                  return (
+                    <div key={j.id} className="p-3 rounded-md border bg-white/80">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-lg">{mood?.emoji}</span>
+                        <span className="text-sm font-medium">{mood?.label}</span>
+                        <span className="text-xs text-gray-500 ml-auto">{new Date(j.created_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap">{j.content}</p>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>

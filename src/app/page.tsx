@@ -197,12 +197,12 @@ export default function Home() {
             </Button>
           </Link>
           <Button 
-            variant="ghost" 
+            variant="outline" 
             onClick={() => signOut.mutate()}
             disabled={signOut.isPending}
-            className="text-gray-700 hover:bg-green-50"
+            className="border-red-200 text-red-700 hover:bg-red-50 hover:border-red-300"
           >
-            {signOut.isPending ? 'Çıkış yapılıyor...' : 'Çıkış Yap'}
+            {signOut.isPending ? 'Çıkış yapılıyor...' : '🚪 Çıkış Yap'}
           </Button>
         </div>
       </div>
