@@ -96,9 +96,15 @@ export function useSignUp() {
         }
         
         return data
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Email formatı hatalarını görmezden gel ve devam et
-        if (error.message.includes('Email address') || error.message.includes('invalid')) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : (typeof error === 'object' && error !== null && 'message' in error && typeof (error as { message?: unknown }).message === 'string')
+              ? (error as { message: string }).message
+              : ''
+        if (message.includes('Email address') || message.includes('invalid')) {
           // Email formatını düzelt ve tekrar dene
           const sanitizedEmail = email.trim().toLowerCase()
           const { data, error: retryError } = await supabase.auth.signUp({

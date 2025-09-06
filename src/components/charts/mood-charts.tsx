@@ -15,6 +15,7 @@ import {
   Radar,
   Legend,
 } from 'recharts'
+import type { TooltipProps } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useMoodHistory, MOOD_TYPES, type MoodType } from '@/lib/hooks/useMood'
 
@@ -84,11 +85,20 @@ function aggregateMoodDistribution(entries: MoodEntryLike[]) {
 
 export function MoodCharts({ userId }: Props) {
   const weekly = useMoodHistory(userId, 7)
-  const monthly = useMoodHistory(userId, 30)
   const yearly = useMoodHistory(userId, 365)
 
   const weeklyAvg = aggregateDailyAverage(weekly.data || [], 7)
   const yearlyDistribution = aggregateMoodDistribution(yearly.data || [])
+
+  const avgTooltipFormatter: TooltipProps<number, string>['formatter'] = (value) => [
+    `${value}/10`,
+    'Ortalama',
+  ]
+
+  const countTooltipFormatter: TooltipProps<number, string>['formatter'] = (value) => [
+    `${value}`,
+    'Adet',
+  ]
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 my-8">
@@ -102,7 +112,7 @@ export function MoodCharts({ userId }: Props) {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="day" />
               <YAxis domain={[0, 10]} />
-              <ReTooltip formatter={(v: any) => [`${v}/10`, 'Ortalama']} labelFormatter={(l) => `Gün: ${l}`} />
+              <ReTooltip formatter={avgTooltipFormatter} labelFormatter={(l) => `Gün: ${l}`} />
               <Line type="monotone" dataKey="average" stroke="#16a34a" strokeWidth={2} dot={{ r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
@@ -121,7 +131,7 @@ export function MoodCharts({ userId }: Props) {
               <PolarRadiusAxis />
               <Radar name="Seçimler" dataKey="value" stroke="#16a34a" fill="#16a34a" fillOpacity={0.4} />
               <Legend />
-              <ReTooltip formatter={(v: any) => [`${v}`, 'Adet']} />
+              <ReTooltip formatter={countTooltipFormatter} />
             </RadarChart>
           </ResponsiveContainer>
         </CardContent>

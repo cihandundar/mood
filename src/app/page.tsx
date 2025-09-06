@@ -47,17 +47,29 @@ export default function Home() {
       
       setSelectedMood(null)
       setIntensity(5)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error adding mood:', error)
-      console.error('Error details:', {
-        message: error?.message,
-        code: error?.code,
-        details: error?.details,
-        hint: error?.hint
-      })
-      
+
+      let message = 'Bilinmeyen hata'
+      let code: string | number | undefined
+      let details: unknown
+      let hint: unknown
+
+      if (error instanceof Error) {
+        message = error.message
+      } else if (typeof error === 'object' && error !== null) {
+        if ('message' in error && typeof (error as { message?: unknown }).message === 'string') {
+          message = (error as { message: string }).message
+        }
+        if ('code' in error) code = (error as { code?: unknown }).code as string | number | undefined
+        if ('details' in error) details = (error as { details?: unknown }).details
+        if ('hint' in error) hint = (error as { hint?: unknown }).hint
+      }
+
+      console.error('Error details:', { message, code, details, hint })
+
       // Kullanıcıya hata mesajı göster
-      alert(`Mood kaydedilemedi: ${error?.message || 'Bilinmeyen hata'}`)
+      alert(`Mood kaydedilemedi: ${message}`)
     }
   }
 

@@ -51,16 +51,25 @@ export default function SignUp() {
       await signUp.mutateAsync({ email, password, name })
       // Başarılı kayıt sonrası dashboard'a yönlendir
       router.push('/dashboard')
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Sign up error:', error)
-      
+
+      let message = 'Bilinmeyen hata'
+      if (error instanceof Error) {
+        message = error.message
+      } else if (typeof error === 'object' && error !== null && 'message' in error) {
+        const maybe = (error as { message?: unknown }).message
+        if (typeof maybe === 'string') message = maybe
+      }
+
+      const lower = message.toLowerCase()
       // Supabase hata mesajlarını Türkçe'ye çevir
-      if (error?.message?.includes('password')) {
+      if (lower.includes('password')) {
         setErrorMessage('Şifre çok zayıf. Daha güçlü bir şifre seçin.')
-      } else if (error?.message?.includes('already registered')) {
+      } else if (lower.includes('already registered')) {
         setErrorMessage('Bu email adresi zaten kayıtlı. Giriş yapmayı deneyin.')
       } else {
-        setErrorMessage(`Kayıt başarısız: ${error?.message || 'Bilinmeyen hata'}`)
+        setErrorMessage(`Kayıt başarısız: ${message}`)
       }
     }
   }
