@@ -25,64 +25,21 @@ export function useAddMood() {
     mutationFn: async (data: Omit<MoodEntry, 'id' | 'created_at'>) => {
       console.log('Attempting to add mood:', data)
       
-      const today = new Date().toISOString().split('T')[0]
-      
-      // Önce bugün aynı mood tipinde kayıt var mı kontrol et
-      const { data: existingMood, error: checkError } = await supabase
+      // Her seferinde yeni kayıt oluştur
+      console.log('Creating new mood entry')
+      const { data: newMood, error: insertError } = await supabase
         .from('mood_entries')
-        .select('*')
-        .eq('user_id', data.user_id)
-        .eq('mood_type', data.mood_type)
-        .gte('created_at', `${today}T00:00:00`)
-        .lte('created_at', `${today}T23:59:59`)
+        .insert([data])
+        .select()
         .single()
       
-      if (checkError && checkError.code !== 'PGRST116') {
-        console.error('Error checking existing mood:', checkError)
-        throw checkError
+      if (insertError) {
+        console.error('Error inserting mood:', insertError)
+        throw insertError
       }
       
-      let result
-      
-      if (existingMood) {
-        // Aynı mood tipinde kayıt varsa güncelle
-        console.log('Updating existing mood entry:', existingMood.id)
-        const { data: updatedMood, error: updateError } = await supabase
-          .from('mood_entries')
-          .update({
-            intensity: data.intensity,
-            notes: data.notes,
-            created_at: new Date().toISOString()
-          })
-          .eq('id', existingMood.id)
-          .select()
-          .single()
-        
-        if (updateError) {
-          console.error('Error updating mood:', updateError)
-          throw updateError
-        }
-        
-        result = updatedMood
-      } else {
-        // Yeni kayıt oluştur
-        console.log('Creating new mood entry')
-        const { data: newMood, error: insertError } = await supabase
-          .from('mood_entries')
-          .insert([data])
-          .select()
-          .single()
-        
-        if (insertError) {
-          console.error('Error inserting mood:', insertError)
-          throw insertError
-        }
-        
-        result = newMood
-      }
-      
-      console.log('Mood operation completed successfully:', result)
-      return result
+      console.log('Mood added successfully:', newMood)
+      return newMood
     },
     onSuccess: () => {
       // Invalidate and refetch mood data

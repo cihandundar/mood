@@ -6,19 +6,9 @@ import { useState } from 'react'
 
 export function MoodDemoSection() {
   const [selectedMood, setSelectedMood] = useState<string | null>(null)
-  const [moodCounts, setMoodCounts] = useState<Record<string, number>>({})
-
-  // Mock mood counts for demo
-  const getMoodCount = (moodType: string) => {
-    return moodCounts[moodType] || 0
-  }
 
   const handleMoodSelect = (moodType: string) => {
     setSelectedMood(moodType)
-    setMoodCounts(prev => ({
-      ...prev,
-      [moodType]: (prev[moodType] || 0) + 1
-    }))
   }
 
   const moodTypes = [
@@ -104,30 +94,22 @@ export function MoodDemoSection() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-4">
-                  {moodTypes.map((mood) => {
-                    const count = getMoodCount(mood.key)
-                    return (
-                      <button
-                        key={mood.key}
-                        onClick={() => handleMoodSelect(mood.key)}
-                        className={`p-4 rounded-lg border-2 transition-all duration-300 hover:scale-105 relative ${
-                          selectedMood === mood.key
-                            ? 'border-green-500 bg-green-50'
-                            : 'border-gray-200 hover:border-green-300'
-                        }`}
-                      >
-                        <div className="text-3xl mb-2">{mood.emoji}</div>
-                        <div className="font-medium text-gray-900">
-                          {mood.label}
-                        </div>
-                        {count > 0 && (
-                          <div className="absolute -top-2 -right-2 bg-green-600 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold">
-                            {count}
-                          </div>
-                        )}
-                      </button>
-                    )
-                  })}
+                  {moodTypes.map((mood) => (
+                    <button
+                      key={mood.key}
+                      onClick={() => handleMoodSelect(mood.key)}
+                      className={`p-4 rounded-lg border-2 transition-all duration-300 hover:scale-105 ${
+                        selectedMood === mood.key
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-gray-200 hover:border-green-300'
+                      }`}
+                    >
+                      <div className="text-3xl mb-2">{mood.emoji}</div>
+                      <div className="font-medium text-gray-900">
+                        {mood.label}
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </CardContent>
             </Card>

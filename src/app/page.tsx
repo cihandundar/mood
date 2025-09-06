@@ -128,16 +128,16 @@ export default function Home() {
                   <Button
                     key={key}
                     variant="outline"
-                    className={`h-24 flex flex-col items-center justify-center gap-2 transition-all hover:scale-105 border-green-200 hover:border-green-400 relative ${
+                    className={`h-24 flex flex-col items-center justify-center gap-2 transition-all duration-300 hover:scale-110 hover:shadow-lg border-2 border-green-300 hover:border-green-500 relative bg-white/90 backdrop-blur-sm ${
                       selectedMood === key ? 'ring-2 ring-green-500 bg-green-50' : ''
                     }`}
                     onClick={() => handleMoodSelect(key)}
                     disabled={addMood.isPending}
                   >
-                    <span className="text-2xl">{mood.emoji}</span>
-                    <span className="text-xs">{mood.label}</span>
+                    <span className="text-3xl transform transition-transform duration-300 hover:scale-125">{mood.emoji}</span>
+                    <span className="text-xs font-medium">{mood.label}</span>
                     {count > 0 && (
-                      <div className="absolute -top-2 -right-2 bg-green-600 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold">
+                      <div className="absolute -top-2 -right-2 bg-green-600 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold shadow-md">
                         {count}
                       </div>
                     )}

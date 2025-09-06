@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { supabase } from '@/lib/supabase'
+import { MoodCharts } from '@/components/charts/mood-charts'
 
 export default function Dashboard() {
   const { user } = useAuth()
@@ -178,20 +180,11 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle>Geçmiş Günler</CardTitle>
             <CardDescription>
-              Son 7 günün ruh hali özetleri
+              Mood kaydı olan günlerin özetleri
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {last7Days.map((date) => (
-                <PastDayCard 
-                  key={date} 
-                  date={date} 
-                  userId={user?.id || ''} 
-                  onSelect={() => setSelectedDayForDetail(date)}
-                />
-              ))}
-            </div>
+            <PastDaysGrid userId={user?.id || ''} onSelectDay={setSelectedDayForDetail} />
           </CardContent>
         </Card>
 
@@ -203,6 +196,9 @@ export default function Dashboard() {
             onClose={() => setSelectedDayForDetail(null)}
           />
         )}
+
+        {/* Charts */}
+        <MoodCharts userId={user?.id || ''} />
 
         {/* Recent History */}
         {moodHistory && moodHistory.length > 0 && (
@@ -244,40 +240,120 @@ export default function Dashboard() {
   )
 }
 
+// Past Days Grid Component
+function PastDaysGrid({ userId, onSelectDay }: { userId: string; onSelectDay: (date: string) => void }) {
+  const [daysWithData, setDaysWithData] = useState<string[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Son 30 günü kontrol et ve mood kaydı olanları bul
+  useEffect(() => {
+    const checkDaysWithData = async () => {
+      setIsLoading(true)
+      const days = []
+      
+      // Son 30 günü kontrol et
+      for (let i = 1; i <= 30; i++) {
+        const date = new Date()
+        date.setDate(date.getDate() - i)
+        const dateString = date.toISOString().split('T')[0]
+        
+        try {
+          const { data, error } = await supabase
+            .from('mood_entries')
+            .select('id')
+            .eq('user_id', userId)
+            .gte('created_at', `${dateString}T00:00:00`)
+            .lte('created_at', `${dateString}T23:59:59`)
+            .limit(1)
+          
+          if (!error && data && data.length > 0) {
+            days.push(dateString)
+          }
+        } catch (error) {
+          console.error('Error checking day:', dateString, error)
+        }
+      }
+      
+      setDaysWithData(days)
+      setIsLoading(false)
+    }
+
+    if (userId) {
+      checkDaysWithData()
+    }
+  }, [userId])
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      </div>
+    )
+  }
+
+  if (daysWithData.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <div className="text-4xl mb-4">📅</div>
+        <h3 className="text-lg font-medium text-gray-700 mb-2">Henüz mood kaydınız yok</h3>
+        <p className="text-gray-500">İlk mood kaydınızı oluşturduğunuzda burada görünecek</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {daysWithData.map((date) => (
+        <PastDayCard 
+          key={date} 
+          date={date} 
+          userId={userId} 
+          onSelect={() => onSelectDay(date)}
+        />
+      ))}
+    </div>
+  )
+}
+
 // Past Day Card Component
-function PastDayCard({ date, userId, onSelect }: { date: string; userId: string; onSelect: () => void }) {
+function PastDayCard({ date, userId, onSelect, showOnlyWithData = false }: { date: string; userId: string; onSelect: () => void; showOnlyWithData?: boolean }) {
   const { data: summary } = useMoodSummaryByDate(userId, date)
+  
+  // Eğer showOnlyWithData true ise ve veri yoksa hiçbir şey gösterme
+  if (!summary && showOnlyWithData) {
+    return null
+  }
   
   if (!summary) {
     return (
-      <Card className="p-4 border-dashed border-gray-300 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors" onClick={onSelect}>
+      <Card className="p-4 border-dashed border-gray-300 bg-gray-50/80 backdrop-blur-sm cursor-pointer hover:bg-gray-100 hover:border-gray-400 transition-all duration-300 hover:scale-105" onClick={onSelect}>
         <div className="text-center">
-          <div className="text-2xl mb-2">📅</div>
-          <h3 className="font-medium text-gray-700">{formatDateForDisplay(date)}</h3>
-          <p className="text-sm text-gray-500">Kayıt yok</p>
+          <div className="text-3xl mb-3 transform transition-transform duration-300 hover:scale-125">📅</div>
+          <h3 className="font-bold text-gray-700 text-lg mb-2">{formatDateForDisplay(date)}</h3>
+          <p className="text-sm text-gray-500 font-medium">Kayıt yok</p>
         </div>
       </Card>
     )
   }
 
   return (
-    <Card className="p-4 cursor-pointer hover:shadow-md transition-all hover:scale-105" onClick={onSelect}>
+    <Card className="p-4 cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-110 border-2 border-gray-200 hover:border-green-300 bg-white/90 backdrop-blur-sm" onClick={onSelect}>
       <div className="text-center">
-        <div className="text-3xl mb-2">
+        <div className="text-4xl mb-3 transform transition-transform duration-300 hover:scale-125">
           {MOOD_TYPES[summary.mostFrequentMood as keyof typeof MOOD_TYPES]?.emoji || '😐'}
         </div>
-        <h3 className="font-semibold text-gray-900">{formatDateForDisplay(date)}</h3>
-        <p className="text-sm text-gray-600 mb-2">
+        <h3 className="font-bold text-gray-900 text-lg mb-2">{formatDateForDisplay(date)}</h3>
+        <p className="text-sm text-gray-600 mb-3 font-medium">
           {summary.totalMoods} kayıt
         </p>
-        <div className="flex flex-wrap gap-1 justify-center">
+        <div className="flex flex-wrap gap-1 justify-center mb-3">
           {Object.entries(summary.moodCounts).slice(0, 3).map(([moodType, count]) => (
-            <Badge key={moodType} variant="secondary" className="text-xs">
+            <Badge key={moodType} variant="secondary" className="text-xs bg-green-100 text-green-800 border-green-200 hover:bg-green-200 transition-colors">
               {MOOD_TYPES[moodType as keyof typeof MOOD_TYPES]?.emoji} {count}
             </Badge>
           ))}
         </div>
-        <p className="text-xs text-gray-500 mt-2">
+        <p className="text-xs text-gray-500 font-medium">
           En çok: {MOOD_TYPES[summary.mostFrequentMood as keyof typeof MOOD_TYPES]?.label}
         </p>
       </div>
