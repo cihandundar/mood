@@ -8,9 +8,9 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
+import { supabase, type MoodEntry } from '@/lib/supabase'
 import { MoodCharts } from '@/components/charts/mood-charts'
-import { useAddJournal, useJournalList, useJournalsByDate } from '@/lib/hooks/useJournal'
+import { useAddJournal, useJournalsByDate } from '@/lib/hooks/useJournal'
 import { CheckInModal, type CheckInData } from '@/components/checkin-modal'
 
 export default function Dashboard() {
@@ -38,15 +38,16 @@ export default function Dashboard() {
   const yesterdayDate = getYesterdayDate()
   const { data: yesterdaySummary } = useMoodSummaryByDate(user?.id || '', yesterdayDate)
   const addJournal = useAddJournal()
-  const { data: journals } = useJournalList(user?.id || '', 6)
+  const { data: journalsToday } = useJournalsByDate(user?.id || '', today)
   const [isJournalOpen, setIsJournalOpen] = useState(false)
   const [journalMood, setJournalMood] = useState<string>('neutral')
   const [journalText, setJournalText] = useState('')
   const checkIns = useMemo(() => {
     if (!moodHistory) return [] as Array<{ timestamp: string; stressLevel?: number; energyLevel?: number; sleepHours?: number }>
     const items: Array<{ timestamp: string; stressLevel?: number; energyLevel?: number; sleepHours?: number }> = []
-    for (const m of moodHistory) {
-      const notes = typeof (m as any).notes === 'string' ? (m as any).notes as string : ''
+    const baseHistory = Array.isArray(moodHistory) ? (moodHistory as MoodEntry[]) : []
+    for (const m of baseHistory) {
+      const notes = typeof m.notes === 'string' ? m.notes : ''
       if (!notes) continue
       for (const line of notes.split('\n')) {
         const trimmed = line.trim()
@@ -54,8 +55,8 @@ export default function Dashboard() {
           const jsonPart = trimmed.slice('checkin:'.length).trim()
           try {
             const data = JSON.parse(jsonPart) as { stressLevel?: number; energyLevel?: number; sleepHours?: number }
-            items.push({ timestamp: (m as any).created_at as string, ...data })
-          } catch (_) {
+            items.push({ timestamp: m.created_at, ...data })
+          } catch {
             // ignore parse errors
           }
         }
@@ -276,16 +277,16 @@ export default function Dashboard() {
         {/* Charts */}
         <MoodCharts userId={user?.id || ''} />
 
-        {/* Günlük (Journal) Son Kayıtlar */}
-        {journals && journals.length > 0 && (
+        {/* Günlük (Journal) - Bugün */}
+        {Array.isArray(journalsToday) && journalsToday.length > 0 && (
           <Card className="mb-8">
             <CardHeader>
               <CardTitle>Günlük Notlar</CardTitle>
-              <CardDescription>Son notlarınız</CardDescription>
+              <CardDescription>Bugünkü notlarınız</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {journals.map((j) => {
+                {journalsToday.map((j) => {
                   const mood = MOOD_TYPES[j.mood_type as keyof typeof MOOD_TYPES]
                   const bg = j.mood_type === 'happy' || j.mood_type === 'excited'
                     ? 'bg-yellow-50'
@@ -564,8 +565,9 @@ function PastDayCard({ date, userId, onSelect, showOnlyWithData = false }: { dat
   const checkIns = useMemo(() => {
     if (!summary?.moods) return [] as Array<{ timestamp: string; stressLevel?: number; energyLevel?: number; sleepHours?: number }>
     const items: Array<{ timestamp: string; stressLevel?: number; energyLevel?: number; sleepHours?: number }> = []
-    for (const m of summary.moods) {
-      const notes = typeof (m as any).notes === 'string' ? ((m as any).notes as string) : ''
+    const moods = Array.isArray(summary?.moods) ? (summary.moods as MoodEntry[]) : []
+    for (const m of moods) {
+      const notes = typeof m.notes === 'string' ? m.notes : ''
       if (!notes) continue
       for (const line of notes.split('\n')) {
         const trimmed = line.trim()
@@ -573,8 +575,8 @@ function PastDayCard({ date, userId, onSelect, showOnlyWithData = false }: { dat
           const jsonPart = trimmed.slice('checkin:'.length).trim()
           try {
             const data = JSON.parse(jsonPart) as { stressLevel?: number; energyLevel?: number; sleepHours?: number }
-            items.push({ timestamp: (m as any).created_at as string, ...data })
-          } catch (_) {}
+            items.push({ timestamp: m.created_at, ...data })
+          } catch {}
         }
       }
     }
@@ -634,8 +636,9 @@ function DayDetailModal({ date, userId, onClose }: { date: string; userId: strin
   const checkIns = useMemo(() => {
     if (!summary?.moods) return [] as Array<{ timestamp: string; stressLevel?: number; energyLevel?: number; sleepHours?: number }>
     const items: Array<{ timestamp: string; stressLevel?: number; energyLevel?: number; sleepHours?: number }> = []
-    for (const m of summary.moods) {
-      const notes = typeof (m as any).notes === 'string' ? (m as any).notes as string : ''
+    const moods = Array.isArray(summary?.moods) ? (summary.moods as MoodEntry[]) : []
+    for (const m of moods) {
+      const notes = typeof m.notes === 'string' ? m.notes : ''
       if (!notes) continue
       for (const line of notes.split('\n')) {
         const trimmed = line.trim()
@@ -643,8 +646,8 @@ function DayDetailModal({ date, userId, onClose }: { date: string; userId: strin
           const jsonPart = trimmed.slice('checkin:'.length).trim()
           try {
             const data = JSON.parse(jsonPart) as { stressLevel?: number; energyLevel?: number; sleepHours?: number }
-            items.push({ timestamp: (m as any).created_at as string, ...data })
-          } catch (_) {}
+            items.push({ timestamp: m.created_at, ...data })
+          } catch {}
         }
       }
     }
@@ -786,7 +789,7 @@ function DayDetailModal({ date, userId, onClose }: { date: string; userId: strin
             )}
           </div>
           <div>
-            <h3 className="font-semibold mb-3">Check‑in'ler</h3>
+            <h3 className="font-semibold mb-3">Check‑in&apos;ler</h3>
             {checkIns.length === 0 && (
               <p className="text-sm text-gray-500">Bu güne ait check‑in bulunamadı.</p>
             )}
