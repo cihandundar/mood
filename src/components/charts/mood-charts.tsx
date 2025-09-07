@@ -18,6 +18,7 @@ import {
 import type { TooltipProps } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useMoodHistory, MOOD_TYPES, type MoodType } from '@/lib/hooks/useMood'
+import { memo, useMemo } from 'react'
 
 type Props = {
   userId: string
@@ -83,22 +84,26 @@ function aggregateMoodDistribution(entries: MoodEntryLike[]) {
   }))
 }
 
-export function MoodCharts({ userId }: Props) {
+const avgTooltipFormatter: NonNullable<TooltipProps<number, string>['formatter']> = (
+  value,
+) => [
+  `${value}/10`,
+  'Ortalama',
+]
+
+const countTooltipFormatter: NonNullable<TooltipProps<number, string>['formatter']> = (
+  value,
+) => [
+  `${value}`,
+  'Adet',
+]
+
+function MoodChartsComponent({ userId }: Props) {
   const weekly = useMoodHistory(userId, 7)
   const yearly = useMoodHistory(userId, 365)
 
-  const weeklyAvg = aggregateDailyAverage(weekly.data || [], 7)
-  const yearlyDistribution = aggregateMoodDistribution(yearly.data || [])
-
-  const avgTooltipFormatter: TooltipProps<number, string>['formatter'] = (value) => [
-    `${value}/10`,
-    'Ortalama',
-  ]
-
-  const countTooltipFormatter: TooltipProps<number, string>['formatter'] = (value) => [
-    `${value}`,
-    'Adet',
-  ]
+  const weeklyAvg = useMemo(() => aggregateDailyAverage(weekly.data || [], 7), [weekly.data])
+  const yearlyDistribution = useMemo(() => aggregateMoodDistribution(yearly.data || []), [yearly.data])
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 my-8">
@@ -128,7 +133,7 @@ export function MoodCharts({ userId }: Props) {
             <RadarChart data={yearlyDistribution}>
               <PolarGrid />
               <PolarAngleAxis dataKey="mood" />
-              <PolarRadiusAxis />
+              <PolarRadiusAxis tick={false} />
               <Radar name="Seçimler" dataKey="value" stroke="#16a34a" fill="#16a34a" fillOpacity={0.4} />
               <Legend />
               <ReTooltip formatter={countTooltipFormatter} />
@@ -141,5 +146,7 @@ export function MoodCharts({ userId }: Props) {
     </div>
   )
 }
+
+export const MoodCharts = memo(MoodChartsComponent, (prev, next) => prev.userId === next.userId)
 
 
