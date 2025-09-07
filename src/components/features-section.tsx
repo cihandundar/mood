@@ -99,7 +99,7 @@ export function FeaturesSection() {
             <p className="text-lg mb-6 opacity-90">
               Ruh sağlığınızı takip etmeye bugün başlayın ve daha mutlu bir yaşam için ilk adımı atın.
             </p>
-            <div className="flex justify-center gap-4">
+            <div className="flex justify-center gap-4 flex-wrap">
               <Badge variant="secondary" className="text-lg px-4 py-2">
                 ✨ Ücretsiz
               </Badge>
