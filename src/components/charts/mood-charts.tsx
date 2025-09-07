@@ -22,6 +22,8 @@ import { memo, useMemo } from 'react'
 
 type Props = {
   userId: string
+  weeklyDays?: number
+  yearlyDays?: number
 }
 
 type MoodEntryLike = {
@@ -98,11 +100,11 @@ const countTooltipFormatter: NonNullable<TooltipProps<number, string>['formatter
   'Adet',
 ]
 
-function MoodChartsComponent({ userId }: Props) {
-  const weekly = useMoodHistory(userId, 7)
-  const yearly = useMoodHistory(userId, 365)
+function MoodChartsComponent({ userId, weeklyDays = 7, yearlyDays = 365 }: Props) {
+  const weekly = useMoodHistory(userId, weeklyDays)
+  const yearly = useMoodHistory(userId, yearlyDays)
 
-  const weeklyAvg = useMemo(() => aggregateDailyAverage(weekly.data || [], 7), [weekly.data])
+  const weeklyAvg = useMemo(() => aggregateDailyAverage(weekly.data || [], weeklyDays), [weekly.data, weeklyDays])
   const yearlyDistribution = useMemo(() => aggregateMoodDistribution(yearly.data || []), [yearly.data])
 
   return (
