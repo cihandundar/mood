@@ -56,7 +56,7 @@ export function NatureSoundToggle() {
       audio.pause()
       audioRef.current = null
     }
-  }, [])
+  }, [TRACKS, volume])
 
   const toggle = async () => {
     const audio = audioRef.current

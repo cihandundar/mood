@@ -1,13 +1,13 @@
 'use client'
 
 import { useAuth, useSignOut } from '@/lib/hooks/useAuth'
-import { useDailySummary, useMoodHistory, useMoodSummaryByDate, getTodayDate, MOOD_TYPES, useSaveCheckIn } from '@/lib/hooks/useMood'
+import { useDailySummary, useMoodHistory, getTodayDate, MOOD_TYPES, useSaveCheckIn } from '@/lib/hooks/useMood'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { type MoodEntry } from '@/lib/supabase'
+import { type MoodEntry, type DailyMoodSummary } from '@/lib/supabase'
 import { MoodCharts } from '@/components/charts/mood-charts'
 import { DailySummaryCard } from '@/components/dashboard/daily-summary-card'
 import { MoodDistributionCard } from '@/components/dashboard/mood-distribution-card'
@@ -15,7 +15,7 @@ import { JournalsTodayCard } from '@/components/dashboard/journals-today-card'
 import { CheckInsSection } from '@/components/dashboard/checkins-section'
 import { DayDetailModal, PastDaysGrid } from '@/components/dashboard/past-days'
 import { JournalModal } from '@/components/dashboard/journal-modal'
-import { useJournalsByDate } from '@/lib/hooks/useJournal'
+import { useJournalsByDate, type JournalEntry } from '@/lib/hooks/useJournal'
 import { CheckInModal, type CheckInData } from '@/components/checkin-modal'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
@@ -162,11 +162,11 @@ export default function Dashboard() {
         )}
 
         {/* Today's Summary */}
-        {dailySummary && <DailySummaryCard summary={dailySummary as any} />}
+        {dailySummary && <DailySummaryCard summary={dailySummary as DailyMoodSummary} />}
 
         {/* Mood Distribution */}
         {dailySummary && dailySummary.mood_distribution && (
-          <MoodDistributionCard summary={dailySummary as any} />
+          <MoodDistributionCard summary={dailySummary as DailyMoodSummary} />
         )}
 
         {/* Geçmiş Günler Özeti */}
@@ -196,7 +196,7 @@ export default function Dashboard() {
 
         {/* Günlük (Journal) - Bugün */}
         {Array.isArray(journalsToday) && journalsToday.length > 0 && (
-          <JournalsTodayCard journals={journalsToday as any} />
+          <JournalsTodayCard journals={journalsToday as JournalEntry[]} />
         )}
 
         {/* Check-in Kayıtları */}

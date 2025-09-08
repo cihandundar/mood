@@ -1,7 +1,7 @@
 'use client'
 
 import { useAuth, useSignOut } from '@/lib/hooks/useAuth'
-import { useAddMood, useTodayMoods, useMoodSummaryByDate, getTodayDate, getYesterdayDate, formatDateForDisplay, MOOD_TYPES } from '@/lib/hooks/useMood'
+import { useAddMood, useTodayMoods, MOOD_TYPES } from '@/lib/hooks/useMood'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -21,9 +21,6 @@ export default function Home() {
   const [intensity, setIntensity] = useState(5)
 
   // Geçmiş günlerin özetini al
-  const todayDate = getTodayDate()
-  const yesterdayDate = getYesterdayDate()
-  const { data: yesterdaySummary } = useMoodSummaryByDate(user?.id || '', yesterdayDate)
 
   // Mood sayısını hesapla
   const getMoodCount = (moodType: string) => {

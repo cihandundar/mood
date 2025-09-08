@@ -178,7 +178,6 @@ export function DayDetailModal({ date, userId, onClose }: { date: string; userId
             <div className="text-4xl mb-4">📅</div>
             <h2 className="text-xl font-bold mb-2">{formatDateForDisplay(date)}</h2>
             <p className="text-gray-600 mb-4">Bu güne ait kayıt bulunamadı</p>
-            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <button className="inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm" onClick={onClose}>Kapat</button>
           </div>
         </div>
@@ -191,7 +190,6 @@ export function DayDetailModal({ date, userId, onClose }: { date: string; userId
       <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold">{formatDateForDisplay(date)} - Detaylar</h2>
-          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <button className="inline-flex items-center justify-center rounded-md px-2 py-1 text-sm" onClick={onClose}>✕</button>
         </div>
 
